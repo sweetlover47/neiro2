@@ -3,6 +3,7 @@
 #define numNeuronsL2 50
 #define numNeuronsR 2
 #define a 1
+#define etta 0.01
 
 #include<iostream>
 
@@ -125,13 +126,24 @@ void Network::runBackPropagation(float* inValues, int size) {
 			backError[i].push_back(sum);
 		}
 	}
-	correctWeights();
+	for (int l = 0; l < 3; ++l)
+		correctWeights(inValues, l, size);
 }
 
-void Network::correctWeights() {
-	for (int i = 0; i < layers[0].size(); ++i) {
-
-	}
+void Network::correctWeights(float* inValues, int l, int size) {
+	int prevN = (l == 0) ? size : layers[l - 1].size();
+	std::vector<float> deltas(prevN, 0);
+	for (int i = 0; i < layers[l].size(); ++i)  //index of next layer
+		for (int j = 0; j < prevN; ++j) {  //index prev
+			deltas.at(j) = -etta * (backError[l].at(i));
+			if (l == 0)
+				deltas.at(j) *= inValues[j];
+			else
+				deltas.at(j) *= (layers[l - 1].at(j).activation);
+			layers[l].at(i).inLinks.at(j).weight += deltas.at(j);
+		}
+	deltas.clear();
+	deltas.shrink_to_fit();
 }
 
 void Network::countErrorForOutputLayer(float value1, float value2) {

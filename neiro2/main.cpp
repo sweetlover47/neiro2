@@ -95,6 +95,8 @@ int main(int argc, char* argv[]) {
 	net->countNetError(values, n - 1, (int)(0.7*values.size()));
 	for (int i = 0; i < (int)(0.7*values.size()); i++)
 		net->runBackPropagation(values.at(i), n - 1);
+	//дальше нужно проранить прямое распространение с новыми весами
+
 
 	delete net;
 	for (auto it = values.begin(); it != values.end(); ++it)

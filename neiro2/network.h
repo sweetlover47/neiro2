@@ -18,6 +18,6 @@ private:
 	std::vector<float> netAnswers[2];
 	float nerErrors[2];
 	std::vector<float> backError[3];
-	void correctWeights();
+	void correctWeights(float* inValues, int layer, int size);
 };
 
