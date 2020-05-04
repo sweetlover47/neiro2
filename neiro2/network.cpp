@@ -1,12 +1,15 @@
 #include "network.h"
-#define numNeuronsL1 40
-#define numNeuronsL2 50
+#define numNeuronsL1 50
+#define numNeuronsL2 60
 #define numNeuronsR 2
 #define a 1
 #define etta 0.001
+#define fMin 0.04
+#define fMax 0.06
 
 #include<iostream>
 #include <algorithm>
+#include <ctime>
 Network::Network(int size)
 {
 	layers[0] = std::vector<Neuron>();
@@ -19,7 +22,9 @@ Network::Network(int size)
 			Link l = Link();
 			l.idIn = j;
 			l.idOut = i;
-			l.weight = 0;
+			srand(time(0));
+			double f = (double)rand() / RAND_MAX;
+			l.weight = 0;// fMin + f * (fMax - fMin);
 			links.push_back(l);
 		}
 		n.inLinks = links;
@@ -35,7 +40,9 @@ Network::Network(int size)
 			Link l = Link();
 			l.idIn = j;
 			l.idOut = i;
-			l.weight = 0;
+			srand(time(0));
+			double f = (double)rand() / RAND_MAX;
+			l.weight = 0;// fMin + f * (fMax - fMin);
 			links.push_back(l);
 		}
 		n.inLinks = links;
@@ -51,14 +58,16 @@ Network::Network(int size)
 			Link l = Link();
 			l.idIn = j;
 			l.idOut = i;
-			l.weight = 0;
+			srand(time(0));
+			double f = (double)rand() / RAND_MAX;
+			l.weight = 0;// fMin + f * (fMax - fMin);
 			links.push_back(l);
 		}
 		n.inLinks = links;
 		layers[2].push_back(n);
 	}
-	netAnswers[0] = std::vector<float>();
-	netAnswers[1] = std::vector<float>();
+	netAnswers[0] = std::vector<double>();
+	netAnswers[1] = std::vector<double>();
 }
 
 
@@ -66,7 +75,7 @@ Network::~Network()
 {
 }
 
-void Network::runDirectPropagation(float* inValues, int size) {
+void Network::runDirectPropagation(double* inValues, int size) {
 	for (int i = 0; i < 3; ++i) { //layers
 		countNeuronValuesInLayer(inValues, layers[i], (i==0)?size:layers[i-1].size());
 		inValues = getNewInputValues(layers[i]);
@@ -76,35 +85,39 @@ void Network::runDirectPropagation(float* inValues, int size) {
 	//std::cout << "1: " << netAnswers[0].at(netAnswers[0].size()-1) << std::endl << "2: " << netAnswers[1].at(netAnswers[1].size() - 1) <<std::endl;
 }
 
-void Network::countNeuronValuesInLayer(float* inValues, std::vector<Neuron> &nextLayer, int size) {
+void Network::countNeuronValuesInLayer(double* inValues, std::vector<Neuron> &nextLayer, int size) {
 	for (int i = 0; i < nextLayer.size(); ++i) { //for each neurin from next layer
-		float sum = 0;
+		double sum = 0;
 		Neuron* neuron = &(nextLayer.at(i));
 		for (int j = 0; j < size; ++j) { //count weightsum for each value from invalue
-			float weight_j_i = neuron->inLinks.at(j).weight;
-			float value = (std::isnan(inValues[j])) ? 0 : inValues[j];
+			double weight_j_i = neuron->inLinks.at(j).weight;
+			double value = (std::isnan(inValues[j])) ? 0 : inValues[j];
 			sum += (weight_j_i * value);
 		}
 		neuron->sum = sum;
-		neuron->activation = 1.0f / (1 + exp(-neuron->sum));
+		neuron->activation = 1.0 / (1 + exp(-neuron->sum));
 	}
 }
 
 
-float * Network::getNewInputValues(std::vector<Neuron> layer)
+double * Network::getNewInputValues(std::vector<Neuron> layer)
 {
-	float* values = new float[layer.size()];
+	double* values = new double[layer.size()];
 	for (int i = 0; i < layer.size(); ++i)
 		values[i] = layer.at(i).activation;
 	return values;
 }
 
-void Network::countNetError(std::vector<float*> inValues, int attrSize, int countExamples) {
-	float error1 = 0;
-	float error2 = 0;
+void Network::countNetError(std::vector<double*> inValues, int attrSize, int countExamples) {
+	double error1 = 0;
+	double error2 = 0;
 	for (int i = 0; i < countExamples; ++i) {
-		float value1 = isnan(inValues.at(i)[attrSize - 2])? netAnswers[0][i] : inValues.at(i)[attrSize - 2];
-		float value2 = isnan(inValues.at(i)[attrSize - 1])? netAnswers[1][i] : inValues.at(i)[attrSize - 1];
+		double value1 = isnan(inValues.at(i)[attrSize - 2])? 
+			netAnswers[0][i] : 
+			inValues.at(i)[attrSize - 2];
+		double value2 = isnan(inValues.at(i)[attrSize - 1])? 
+			netAnswers[1][i] : 
+			inValues.at(i)[attrSize - 1];
 		error1 += ((netAnswers[0].at(i) - value1)*(netAnswers[0].at(i) - value1));
 		error2 += ((netAnswers[1].at(i) - value2)*(netAnswers[1].at(i) - value2));
 	}
@@ -114,19 +127,19 @@ void Network::countNetError(std::vector<float*> inValues, int attrSize, int coun
 }
 
 
-void Network::runBackPropagation(float* inValues, int size) {
+void Network::runBackPropagation(double* inValues, int size) {
 	countErrorForOutputLayer(inValues[size - 2], inValues[size - 1]);
 	if (isnan(backError[2][0]) && isnan(backError[2][1]))
 		return;
-	for (int i = 1; i >= 0; --i) {
-		for (int  k = 0; k < layers[i].size(); ++k) {
-			float derivative = (layers[i].at(k).activation)*(1 - layers[i].at(k).activation);
-			float sum = 0;
-			for (int j = 0; j < layers[i+1].size(); ++j) {
+	for (int i = 1; i >= 0; --i) { //hidden layers
+		for (int  k = 0; k < layers[i].size(); ++k) { //for each k-neuron from hidden layer
+			double derivative = (layers[i].at(k).activation)*(1 - layers[i].at(k).activation);
+			double sum = 0;
+			for (int j = 0; j < layers[i+1].size(); ++j) { //for each neuron from next layer
 				if (isnan(backError[i + 1][j]))
 					continue;
-				float weight = layers[i+1].at(j).inLinks.at(k).weight;
-				sum += ((backError[i+1].at(j) * weight) * derivative);
+				double weight = layers[i + 1].at(j).inLinks.at(k).weight;	//get weights which connecting with k-neuron
+				sum += ((backError[i + 1].at(j) * weight) * derivative);	//weight multiply on sigma-error from next layer
 			}
 			backError[i].push_back(sum);
 		}
@@ -142,26 +155,28 @@ void Network::runBackPropagation(float* inValues, int size) {
 	backError[2].shrink_to_fit();
 }
 
-void Network::correctWeights(float* inValues, int l, int size) {
+void Network::correctWeights(double* inValues, int l, int size) {
 	int prevN = (l == 0) ? size : layers[l - 1].size();
-	std::vector<float> deltas(prevN, 0);
-	for (int i = 0; i < layers[l].size(); ++i)  //index of next layer
+	std::vector<double> deltas(prevN, 0);
+	for (int i = 0; i < layers[l].size(); ++i) { //index of next layer
+		deltas = std::vector<double>(prevN, 0);
 		for (int j = 0; j < prevN; ++j) {  //index prev
 			if (isnan(backError[l][i])) continue;
 			deltas.at(j) = -etta * (backError[l].at(i));
 			if (l == 0)
-				deltas.at(j) *= (isnan(inValues[j]) ? 0 : inValues[j] );
+				deltas.at(j) *= (isnan(inValues[j]) ? 0 : inValues[j]);
 			else
 				deltas.at(j) *= (layers[l - 1].at(j).activation);
 			layers[l].at(i).inLinks.at(j).weight += deltas.at(j);
 		}
-	deltas.clear();
-	deltas.shrink_to_fit();
+		deltas.clear();
+		deltas.shrink_to_fit();
+	}
 }
 
-void Network::countErrorForOutputLayer(float value1, float value2) {
-	float activation1 = layers[2].at(0).activation;
-	float activation2 = layers[2].at(1).activation;
+void Network::countErrorForOutputLayer(double value1, double value2) {
+	double activation1 = layers[2].at(0).activation;
+	double activation2 = layers[2].at(1).activation;
 	backError[2].push_back((activation1 - value1)*activation1*(1 - activation1));
 	backError[2].push_back((activation2 - value2)*activation2*(1 - activation2));
 }
