@@ -6,6 +6,6 @@ public:
 	~Link();
 	int idIn;
 	int idOut;
-	float weight;
+	double weight;
 };
 
