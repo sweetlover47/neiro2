@@ -7,7 +7,7 @@ public:
 	Neuron();
 	~Neuron();
 	int id;
-	double sum;
+	float sum;
 	std::vector<Link> inLinks; // -> (N)
 	double activation;
 private:

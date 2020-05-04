@@ -19,16 +19,16 @@
 
 bool isFloat(std::string s) {
 	std::istringstream iss(s);
-	double dummy;
+	float dummy;
 	iss >> std::noskipws >> dummy;
 	return iss && iss.eof();     // Result converted to bool
 }
 
 int main(int argc, char* argv[]) {
 	std::vector<std::string> title = std::vector<std::string>();
-	std::vector<double*> values = std::vector<double*>();
+	std::vector<float*> values = std::vector<float*>();
 	std::string stmp;
-	double ftmp;
+	float ftmp;
 	std::ifstream in("dataset.txt");
 	std::string titles;
 	std::getline(in, titles);
@@ -51,16 +51,16 @@ int main(int argc, char* argv[]) {
 		ss = std::istringstream(stmp);
 		std::getline(ss, stmp, ';');
 		std::getline(ss, stmp, ';');
-		values.push_back(new double[n]); // initialization new
+		values.push_back(new float[n]); // initialization new
 		for (int i = 0; i < n; ++i)
-			values.at(row)[i] = std::numeric_limits<double>::quiet_NaN();
+			values.at(row)[i] = std::numeric_limits<float>::quiet_NaN();
 		while (std::getline(ss, stmp, ';')) {	//delimeters ;
 			if (isFloat(stmp)) {
 				ftmp = std::stof(stmp);
 				values.at(row)[column] = ftmp;
 			}
 			else
-				values.at(row)[column] = std::numeric_limits<double>::quiet_NaN();
+				values.at(row)[column] = std::numeric_limits<float>::quiet_NaN();
 			column = ++column % n;
 		}
 		if (std::isnan(values.at(row)[n - 3])		//if all classes are null, remove
@@ -76,8 +76,8 @@ int main(int argc, char* argv[]) {
 		if (isnan((*it)[n - 2]) && !isnan((*it)[n - 1]))
 			(*it)[n - 2] = (*it)[n - 1] * 1000;
 	}
-	double max1 = 0.0f;
-	double max2 = 0.0f;
+	float max1 = 0.0f;
+	float max2 = 0.0f;
 	for (int i = 0; i < values.size(); ++i) {
 		if (values.at(i)[n - 3] > max1)
 			max1 = values.at(i)[n - 3];
@@ -103,6 +103,8 @@ int main(int argc, char* argv[]) {
 		net->countNetError(values, n - 1, (int)(0.7*values.size()));
 		std::cout << "era "<< era << ": " << net->netErrors.at(era) << std::endl;
 	}
+	std::cout << "era " << net->netErrors.size()-1 << ": " << net->netErrors.at(net->netErrors.size() - 1) << std::endl;
+
 	//дальше нужно проранить прямое распространение с новыми весами
 
 	delete net;
@@ -111,5 +113,6 @@ int main(int argc, char* argv[]) {
 	values.clear();
 	title.clear();
 	ss.clear();
+	system("pause");
 	return 0;
 }

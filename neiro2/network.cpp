@@ -57,8 +57,8 @@ Network::Network(int size)
 		n.inLinks = links;
 		layers[2].push_back(n);
 	}
-	netAnswers[0] = std::vector<double>();
-	netAnswers[1] = std::vector<double>();
+	netAnswers[0] = std::vector<float>();
+	netAnswers[1] = std::vector<float>();
 }
 
 
@@ -66,7 +66,7 @@ Network::~Network()
 {
 }
 
-void Network::runDirectPropagation(double* inValues, int size) {
+void Network::runDirectPropagation(float* inValues, int size) {
 	for (int i = 0; i < 3; ++i) { //layers
 		countNeuronValuesInLayer(inValues, layers[i], (i==0)?size:layers[i-1].size());
 		inValues = getNewInputValues(layers[i]);
@@ -76,13 +76,13 @@ void Network::runDirectPropagation(double* inValues, int size) {
 	//std::cout << "1: " << netAnswers[0].at(netAnswers[0].size()-1) << std::endl << "2: " << netAnswers[1].at(netAnswers[1].size() - 1) <<std::endl;
 }
 
-void Network::countNeuronValuesInLayer(double* inValues, std::vector<Neuron> &nextLayer, int size) {
+void Network::countNeuronValuesInLayer(float* inValues, std::vector<Neuron> &nextLayer, int size) {
 	for (int i = 0; i < nextLayer.size(); ++i) { //for each neurin from next layer
-		double sum = 0;
+		float sum = 0;
 		Neuron* neuron = &(nextLayer.at(i));
 		for (int j = 0; j < size; ++j) { //count weightsum for each value from invalue
-			double weight_j_i = neuron->inLinks.at(j).weight;
-			double value = (std::isnan(inValues[j])) ? 0 : inValues[j];
+			float weight_j_i = neuron->inLinks.at(j).weight;
+			float value = (std::isnan(inValues[j])) ? 0 : inValues[j];
 			sum += (weight_j_i * value);
 		}
 		neuron->sum = sum;
@@ -91,20 +91,20 @@ void Network::countNeuronValuesInLayer(double* inValues, std::vector<Neuron> &ne
 }
 
 
-double * Network::getNewInputValues(std::vector<Neuron> layer)
+float * Network::getNewInputValues(std::vector<Neuron> layer)
 {
-	double* values = new double[layer.size()];
+	float* values = new float[layer.size()];
 	for (int i = 0; i < layer.size(); ++i)
 		values[i] = layer.at(i).activation;
 	return values;
 }
 
-void Network::countNetError(std::vector<double*> inValues, int attrSize, int countExamples) {
-	double error1 = 0;
-	double error2 = 0;
+void Network::countNetError(std::vector<float*> inValues, int attrSize, int countExamples) {
+	float error1 = 0;
+	float error2 = 0;
 	for (int i = 0; i < countExamples; ++i) {
-		double value1 = isnan(inValues.at(i)[attrSize - 2])? 0 : inValues.at(i)[attrSize - 2];
-		double value2 = isnan(inValues.at(i)[attrSize - 1])? 0 : inValues.at(i)[attrSize - 1];
+		float value1 = isnan(inValues.at(i)[attrSize - 2])? netAnswers[0][i] : inValues.at(i)[attrSize - 2];
+		float value2 = isnan(inValues.at(i)[attrSize - 1])? netAnswers[1][i] : inValues.at(i)[attrSize - 1];
 		error1 += ((netAnswers[0].at(i) - value1)*(netAnswers[0].at(i) - value1));
 		error2 += ((netAnswers[1].at(i) - value2)*(netAnswers[1].at(i) - value2));
 	}
@@ -114,14 +114,18 @@ void Network::countNetError(std::vector<double*> inValues, int attrSize, int cou
 }
 
 
-void Network::runBackPropagation(double* inValues, int size) {
+void Network::runBackPropagation(float* inValues, int size) {
 	countErrorForOutputLayer(inValues[size - 2], inValues[size - 1]);
+	if (isnan(backError[2][0]) && isnan(backError[2][1]))
+		return;
 	for (int i = 1; i >= 0; --i) {
 		for (int  k = 0; k < layers[i].size(); ++k) {
-			double derivative = (layers[i].at(k).activation)*(1 - layers[i].at(k).activation);
-			double sum = 0;
+			float derivative = (layers[i].at(k).activation)*(1 - layers[i].at(k).activation);
+			float sum = 0;
 			for (int j = 0; j < layers[i+1].size(); ++j) {
-				double weight = layers[i+1].at(j).inLinks.at(k).weight;
+				if (isnan(backError[i + 1][j]))
+					continue;
+				float weight = layers[i+1].at(j).inLinks.at(k).weight;
 				sum += ((backError[i+1].at(j) * weight) * derivative);
 			}
 			backError[i].push_back(sum);
@@ -138,11 +142,12 @@ void Network::runBackPropagation(double* inValues, int size) {
 	backError[2].shrink_to_fit();
 }
 
-void Network::correctWeights(double* inValues, int l, int size) {
+void Network::correctWeights(float* inValues, int l, int size) {
 	int prevN = (l == 0) ? size : layers[l - 1].size();
-	std::vector<double> deltas(prevN, 0);
+	std::vector<float> deltas(prevN, 0);
 	for (int i = 0; i < layers[l].size(); ++i)  //index of next layer
 		for (int j = 0; j < prevN; ++j) {  //index prev
+			if (isnan(backError[l][i])) continue;
 			deltas.at(j) = -etta * (backError[l].at(i));
 			if (l == 0)
 				deltas.at(j) *= (isnan(inValues[j]) ? 0 : inValues[j] );
@@ -154,11 +159,9 @@ void Network::correctWeights(double* inValues, int l, int size) {
 	deltas.shrink_to_fit();
 }
 
-void Network::countErrorForOutputLayer(double value1, double value2) {
-	double activation1 = layers[2].at(0).activation;
-	double activation2 = layers[2].at(1).activation;
-	double v1 = isnan(value1) ? 0 : value1;
-	double v2 = isnan(value2) ? 0 : value2;
-	backError[2].push_back((activation1 - v1)*activation1*(1 - activation1));
-	backError[2].push_back((activation2 - v2)*activation2*(1 - activation2));
+void Network::countErrorForOutputLayer(float value1, float value2) {
+	float activation1 = layers[2].at(0).activation;
+	float activation2 = layers[2].at(1).activation;
+	backError[2].push_back((activation1 - value1)*activation1*(1 - activation1));
+	backError[2].push_back((activation2 - value2)*activation2*(1 - activation2));
 }
